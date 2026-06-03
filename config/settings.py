@@ -122,3 +122,9 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+#! Se ñade a la llave de la api de google maps 
+GOOGLE_MAPS_API_KEY = "Crear llave de Googel Maps"
+
+#! Permitir las peticiones del Esp32 
+CORS_ALLOW_ALL_ORIGINS = True

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        header {
+            background: #16213e;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #0f3460;
+        }
+        header h1 { font-size: 1.2rem; color: #e94560; }
+
+        #estado-gps {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        #indicador {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #555;
+        }
+        #indicador.activo  { background: #00ff88; animation: pulso 1s infinite; }
+        #indicador.critico { background: #ff4444; animation: pulso 0.4s infinite; }
+
+        @keyframes pulso {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+
+        /* ── Layout principal ── */
+        .contenedor {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Panel lateral ── */
+        .panel {
+            width: 300px;
+            background: #16213e;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            border-right: 1px solid #0f3460;
+        }
+
+        .panel h2 {
+            font-size: 0.9rem;
+            color: #e94560;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        /* ── Coordenadas actuales ── */
+        .coord-display {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.85rem;
+            line-height: 1.8;
+        }
+        .coord-display span { color: #00ff88; font-weight: bold; }
+
+        /* ── Formulario de ruta ── */
+        .form-ruta { display: flex; flex-direction: column; gap: 8px; }
+
+        .form-ruta input, .form-ruta select {
+            background: #0f3460;
+            border: 1px solid #e94560;
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: #eee;
+            font-size: 0.85rem;
+        }
+
+        .btn {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.85rem;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-primary  { background: #e94560; color: white; }
+        .btn-success  { background: #00b894; color: white; }
+        .btn-warning  { background: #fdcb6e; color: #333; }
+
+        /* ── Lista de puntos ── */
+        #lista-puntos { display: flex; flex-direction: column; gap: 6px; }
+
+        .punto-item {
+            background: #0f3460;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .punto-item button {
+            background: #e94560;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            padding: 2px 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        /* ── Resultado de ruta ── */
+        #resultado-ruta {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8rem;
+            line-height: 1.8;
+            display: none;
+        }
+        #resultado-ruta.critico { border: 2px solid #ff4444; }
+
+        /* ── Mapa ── */
+        #mapa {
+            flex: 1;
+        }
+
+        /* ── Alerta crítica ── */
+        #alerta-critica {
+            display: none;
+            position: fixed;
+            top: 70px; left: 50%;
+            transform: translateX(-50%);
+            background: #ff4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            z-index: 1000;
+            animation: pulso 0.5s infinite;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🛰️ GPS Tracker</h1>
+    <div id="estado-gps">
+        <div id="indicador"></div>
+        <span id="estado-texto">Sin señal</span>
+    </div>
+</header>
+
+<div id="alerta-critica">⚠️ ¡DESVÍO DE RUTA DETECTADO!</div>
+
+<div class="contenedor">
+
+    <!-- Panel lateral -->
+    <div class="panel">
+
+        <!-- Coordenadas actuales -->
+        <div>
+            <h2>📍 Posición actual</h2>
+            <div class="coord-display">
+                Latitud:  <span id="lat-actual">—</span><br>
+                Longitud: <span id="lng-actual">—</span><br>
+                Última actualización: <span id="tiempo-actual">—</span>
+            </div>
+        </div>
+
+        <!-- Agregar puntos de ruta -->
+        <div>
+            <h2>🗺️ Planear ruta</h2>
+            <div class="form-ruta">
+                <input type="text"   id="nombre-punto" placeholder="Nombre del punto (ej: Polanco)">
+                <input type="number" id="lat-punto"    placeholder="Latitud  (ej: 19.4343)" step="any">
+                <input type="number" id="lng-punto"    placeholder="Longitud (ej: -99.1950)" step="any">
+                <button class="btn btn-success" onclick="agregarPunto()">+ Agregar punto</button>
+            </div>
+        </div>
+
+        <!-- Lista de puntos agregados -->
+        <div>
+            <h2>📌 Puntos en ruta</h2>
+            <div id="lista-puntos">
+                <small style="color:#888">Agrega al menos 2 puntos</small>
+            </div>
+        </div>
+
+        <!-- Seleccionar algoritmo y calcular -->
+        <div>
+            <h2>⚙️ Algoritmo</h2>
+            <div class="form-ruta">
+                <select id="algoritmo">
+                    <option value="astar">A* — Un destino (más rápido)</option>
+                    <option value="clarke_wright">Clarke & Wright — Múltiples paradas</option>
+                    <option value="genetico">Genético — Optimización avanzada</option>
+                </select>
+                <button class="btn btn-primary" onclick="calcularRuta()">🚀 Calcular ruta óptima</button>
+                <button class="btn btn-warning" onclick="limpiarRuta()">🗑️ Limpiar</button>
+            </div>
+        </div>
+
+        <!-- Resultado -->
+        <div id="resultado-ruta">
+            <h2 style="color:#e94560; margin-bottom:8px">📊 Resultado</h2>
+            <div id="resultado-texto"></div>
+        </div>
+
+    </div>
+
+    <!-- Mapa -->
+    <div id="mapa"></div>
+</div>
+
+<script>
+// ── Variables globales ──────────────────────────────────────
+let mapa, marcadorGPS, polylineRuta, polylineRecorrido;
+let puntosRuta     = [];   // puntos que el usuario agrega
+let rutaActualId   = null;
+let marcadoresPuntos = [];
+let coordenadasRecorrido = [];
+
+// ── Inicializar Google Maps ─────────────────────────────────
+function initMap() {
+    mapa = new google.maps.Map(document.getElementById('mapa'), {
+        center: { lat: 19.4326, lng: -99.1332 },  // CDMX
+        zoom: 12,
+        styles: [  // Tema oscuro
+            { elementType: 'geometry',        stylers: [{ color: '#1a1a2e' }] },
+            { elementType: 'labels.text.fill',stylers: [{ color: '#8ec3b9' }] },
+            { featureType: 'road',            elementType: 'geometry',
+              stylers: [{ color: '#16213e' }] },
+            { featureType: 'water',           elementType: 'geometry',
+              stylers: [{ color: '#0f3460' }] },
+            { featureType: 'poi',             stylers: [{ visibility: 'off' }] },
+        ]
+    });
+
+    // Marcador del GPS en tiempo real
+    marcadorGPS = new google.maps.Marker({
+        map: mapa,
+        title: 'Posición GPS',
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#00ff88',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2,
+        }
+    });
+
+    // Línea del recorrido real
+    polylineRecorrido = new google.maps.Polyline({
+        map: mapa,
+        strokeColor: '#00ff88',
+        strokeOpacity: 0.7,
+        strokeWeight: 3,
+    });
+
+    // Línea de la ruta planeada
+    polylineRuta = new google.maps.Polyline({
+        map: mapa,
+        strokeColor: '#e94560',
+        strokeOpacity: 0.9,
+        strokeWeight: 4,
+        strokeDashArray: [10, 5],
+    });
+
+    // Iniciar actualizaciones automáticas
+    actualizarGPS();
+    setInterval(actualizarGPS, 3000);  // cada 3 segundos
+}
+
+// ── Actualizar posición GPS desde el backend ────────────────
+async function actualizarGPS() {
+    try {
+        const res  = await fetch('/api/gps/ultima/');
+        const data = await res.json();
+
+        if (data.error) return;
+
+        const pos = { lat: data.lat, lng: data.lng };
+
+        // Actualizar marcador
+        marcadorGPS.setPosition(pos);
+        document.getElementById('lat-actual').textContent  = data.lat.toFixed(6);
+        document.getElementById('lng-actual').textContent  = data.lng.toFixed(6);
+        document.getElementById('tiempo-actual').textContent =
+            new Date(data.timestamp).toLocaleTimeString('es-MX');
+
+        // Indicador activo
+        const indicador = document.getElementById('indicador');
+        indicador.className = 'activo';
+        document.getElementById('estado-texto').textContent = 'GPS activo';
+
+        // Agregar al recorrido
+        coordenadasRecorrido.push(pos);
+        polylineRecorrido.setPath(coordenadasRecorrido);
+
+        // Verificar desvío si hay ruta activa
+        if (rutaActualId) {
+            verificarDesvio(rutaActualId);
+        }
+
+    } catch (e) {
+        console.error('Error GPS:', e);
+    }
+}
+
+// ── Agregar punto a la ruta ─────────────────────────────────
+function agregarPunto() {
+    const nombre = document.getElementById('nombre-punto').value.trim();
+    const lat    = parseFloat(document.getElementById('lat-punto').value);
+    const lng    = parseFloat(document.getElementById('lng-punto').value);
+
+    if (!nombre || isNaN(lat) || isNaN(lng)) {
+        alert('Completa todos los campos del punto');
+        return;
+    }
+
+    puntosRuta.push({ nombre, lat, lng });
+
+    // Marcador en el mapa
+    const marcador = new google.maps.Marker({
+        position: { lat, lng },
+        map: mapa,
+        title: nombre,
+        label: { text: String(puntosRuta.length), color: 'white' },
+        icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 12,
+            fillColor: '#e94560',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2,
+        }
+    });
+    marcadoresPuntos.push(marcador);
+
+    // Actualizar lista
+    renderizarListaPuntos();
+
+    // Limpiar inputs
+    document.getElementById('nombre-punto').value = '';
+    document.getElementById('lat-punto').value    = '';
+    document.getElementById('lng-punto').value    = '';
+}
+
+// ── Renderizar lista de puntos ──────────────────────────────
+function renderizarListaPuntos() {
+    const lista = document.getElementById('lista-puntos');
+    if (puntosRuta.length === 0) {
+        lista.innerHTML = '<small style="color:#888">Agrega al menos 2 puntos</small>';
+        return;
+    }
+    lista.innerHTML = puntosRuta.map((p, i) => `
+        <div class="punto-item">
+            <span>${i === 0 ? '🏁' : '📍'} ${p.nombre}</span>
+            <button onclick="eliminarPunto(${i})">✕</button>
+        </div>
+    `).join('');
+}
+
+// ── Eliminar punto ──────────────────────────────────────────
+function eliminarPunto(idx) {
+    puntosRuta.splice(idx, 1);
+    marcadoresPuntos[idx].setMap(null);
+    marcadoresPuntos.splice(idx, 1);
+    renderizarListaPuntos();
+}
+
+// ── Calcular ruta óptima ────────────────────────────────────
+async function calcularRuta() {
+    if (puntosRuta.length < 2) {
+        alert('Agrega al menos 2 puntos para calcular la ruta');
+        return;
+    }
+
+    const algoritmo = document.getElementById('algoritmo').value;
+
+    try {
+        const res = await fetch('/api/ruta/calcular/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                algoritmo,
+                origen: puntosRuta[0].nombre,
+                puntos: puntosRuta
+            })
+        });
+        const data = await res.json();
+
+        if (data.error) { alert('Error: ' + data.error); return; }
+
+        rutaActualId = data.ruta_id;
+
+        // Dibujar ruta en el mapa
+        const coordsRuta = data.rutas[0].map(nombre => {
+            const p = puntosRuta.find(x => x.nombre === nombre);
+            return { lat: p.lat, lng: p.lng };
+        });
+        polylineRuta.setPath(coordsRuta);
+
+        // Centrar mapa en la ruta
+        const bounds = new google.maps.LatLngBounds();
+        coordsRuta.forEach(c => bounds.extend(c));
+        mapa.fitBounds(bounds);
+
+        // Mostrar resultado
+        const nombres = {
+            astar: 'A*', clarke_wright: 'Clarke & Wright', genetico: 'Genético'
+        };
+        const resultadoDiv = document.getElementById('resultado-ruta');
+        resultadoDiv.style.display = 'block';
+        document.getElementById('resultado-texto').innerHTML = `
+            <b>Algoritmo:</b> ${nombres[algoritmo]}<br>
+            <b>Ruta:</b> ${data.rutas[0].join(' → ')}<br>
+            <b>Distancia total:</b> ${data.costo_km} km<br>
+            <b>Puntos:</b> ${data.rutas[0].length}
+        `;
+
+    } catch (e) {
+        alert('Error al calcular ruta: ' + e.message);
+    }
+}
+
+// ── Verificar desvío ────────────────────────────────────────
+async function verificarDesvio(rutaId) {
+    try {
+        const res  = await fetch(`/api/ruta/desvio/${rutaId}/`);
+        const data = await res.json();
+
+        const alerta    = document.getElementById('alerta-critica');
+        const indicador = document.getElementById('indicador');
+
+        if (data.es_critica) {
+            alerta.style.display = 'block';
+            indicador.className  = 'critico';
+            document.getElementById('estado-texto').textContent = '⚠️ Desvío detectado';
+        } else {
+            alerta.style.display = 'none';
+            indicador.className  = 'activo';
+            document.getElementById('estado-texto').textContent = 'GPS activo';
+        }
+    } catch (e) {
+        console.error('Error verificando desvío:', e);
+    }
+}
+
+// ── Limpiar todo ────────────────────────────────────────────
+function limpiarRuta() {
+    puntosRuta = [];
+    marcadoresPuntos.forEach(m => m.setMap(null));
+    marcadoresPuntos = [];
+    polylineRuta.setPath([]);
+    rutaActualId = null;
+    renderizarListaPuntos();
+    document.getElementById('resultado-ruta').style.display = 'none';
+    document.getElementById('alerta-critica').style.display = 'none';
+}
+</script>
+
+<!-- Google Maps API -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key }}&callback=initMap" async defer></script>
+
+</body>
+</html>
