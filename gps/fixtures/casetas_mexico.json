@@ -1,0 +1,22 @@
+[
+  {"model": "gps.caseta", "pk": 1,  "fields": {"nombre": "Caseta Tlalpan (MEX-95)",         "latitud": 19.2876, "longitud": -99.1531, "costo": 56.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 2,  "fields": {"nombre": "Caseta Tres Marías (MEX-95D)",     "latitud": 19.0543, "longitud": -98.9821, "costo": 89.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 3,  "fields": {"nombre": "Caseta Cuautla (MEX-160)",         "latitud": 18.9843, "longitud": -98.8432, "costo": 47.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 4,  "fields": {"nombre": "Caseta Tepotzotlán (MEX-57D)",     "latitud": 19.7154, "longitud": -99.2241, "costo": 78.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 5,  "fields": {"nombre": "Caseta Jorobas (MEX-57D)",         "latitud": 19.9012, "longitud": -99.0934, "costo": 65.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 6,  "fields": {"nombre": "Caseta Querétaro Norte (MEX-57D)", "latitud": 20.6789, "longitud": -100.412, "costo": 112.0, "activa": true}},
+  {"model": "gps.caseta", "pk": 7,  "fields": {"nombre": "Caseta Irapuato (MEX-45)",         "latitud": 20.6734, "longitud": -101.359, "costo": 95.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 8,  "fields": {"nombre": "Caseta Salamanca (MEX-43)",        "latitud": 20.5732, "longitud": -101.195, "costo": 58.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 9,  "fields": {"nombre": "Caseta Lagos de Moreno (MEX-80)",  "latitud": 21.3521, "longitud": -101.931, "costo": 87.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 10, "fields": {"nombre": "Caseta Guadalajara Oriente (MEX-80)","latitud": 20.6597,"longitud": -103.249,"costo": 134.0, "activa": true}},
+  {"model": "gps.caseta", "pk": 11, "fields": {"nombre": "Caseta Zapotlanejo (MEX-80)",      "latitud": 20.6234, "longitud": -102.869, "costo": 72.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 12, "fields": {"nombre": "Caseta Palmillas (MEX-57D)",       "latitud": 20.2341, "longitud": -100.023, "costo": 91.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 13, "fields": {"nombre": "Caseta San Martín (MEX-150D)",     "latitud": 19.3412, "longitud": -98.3421, "costo": 68.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 14, "fields": {"nombre": "Caseta Orizaba (MEX-150D)",        "latitud": 18.8512, "longitud": -97.1023, "costo": 143.0, "activa": true}},
+  {"model": "gps.caseta", "pk": 15, "fields": {"nombre": "Caseta Córdoba (MEX-150D)",        "latitud": 18.8843, "longitud": -96.9312, "costo": 98.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 16, "fields": {"nombre": "Caseta Cumbres (MEX-85D)",         "latitud": 25.7234, "longitud": -100.312, "costo": 54.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 17, "fields": {"nombre": "Caseta Monterrey-Saltillo (MEX-40D)","latitud": 25.5123,"longitud": -100.812,"costo": 119.0, "activa": true}},
+  {"model": "gps.caseta", "pk": 18, "fields": {"nombre": "Caseta Saltillo Oriente (MEX-40)", "latitud": 25.4312, "longitud": -100.912, "costo": 76.0,  "activa": true}},
+  {"model": "gps.caseta", "pk": 19, "fields": {"nombre": "Caseta Matehuala (MEX-57)",        "latitud": 23.6521, "longitud": -100.632, "costo": 103.0, "activa": true}},
+  {"model": "gps.caseta", "pk": 20, "fields": {"nombre": "Caseta San Luis Potosí (MEX-57)",  "latitud": 22.1523, "longitud": -100.981, "costo": 88.0,  "activa": true}}
+]
