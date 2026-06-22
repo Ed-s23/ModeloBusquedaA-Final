@@ -7,8 +7,6 @@ class Coordenada(models.Model):
     longitud  = models.FloatField()
     timestamp = models.DateTimeField(auto_now_add=True)
     velocidad = models.FloatField(null=True, blank=True)
-    gasolina = models.FloatField(null=True, blank=True,
-                              help_text="Nivel de gasolina 0-100%") 
 
     def __str__(self):
         return f"({self.latitud}, {self.longitud}) — {self.timestamp}"

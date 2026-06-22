@@ -13,55 +13,15 @@ from .algorithms import astar_manhattan, detectar_ruta_critica, calcular_combust
 def recibir_gps(request):
     if request.method == 'POST':
         try:
-            data  = json.loads(request.body)
-            nueva = Coordenada.objects.create(
+            data = json.loads(request.body)
+            coord = Coordenada.objects.create(
                 latitud=data['lat'],
                 longitud=data['lng'],
-                velocidad=data.get('velocidad', None),
-                gasolina=data.get('gasolina', None)
+                velocidad=data.get('velocidad', None)
             )
-
-            # ── Detectar caída brusca de gasolina ──────────────
-            alerta_gasolina = False
-            mensaje_alerta  = ''
-            gasolina_actual = data.get('gasolina')
-
-            if gasolina_actual is not None:
-                anterior = Coordenada.objects.exclude(
-                    id=nueva.id
-                ).filter(
-                    gasolina__isnull=False
-                ).order_by('-timestamp').first()
-
-                if anterior and anterior.gasolina is not None:
-                    diferencia = anterior.gasolina - gasolina_actual
-
-                    if diferencia >= 15:
-                        alerta_gasolina = True
-                        mensaje_alerta  = (
-                            f"⚠️ Caída brusca de gasolina: "
-                            f"{anterior.gasolina:.1f}% → {gasolina_actual:.1f}% "
-                            f"(bajó {diferencia:.1f}%)"
-                        )
-                        print(mensaje_alerta)
-
-                    elif gasolina_actual <= 10:
-                        alerta_gasolina = True
-                        mensaje_alerta  = (
-                            f"🚨 Nivel crítico de gasolina: {gasolina_actual:.1f}%"
-                        )
-
-            return JsonResponse({
-                'status':          'ok',
-                'id':              nueva.id,
-                'timestamp':       str(nueva.timestamp),
-                'alerta_gasolina': alerta_gasolina,
-                'mensaje_alerta':  mensaje_alerta
-            })
-
+            return JsonResponse({'status': 'ok', 'id': coord.id, 'timestamp': str(coord.timestamp)})
         except Exception as e:
             return JsonResponse({'status': 'error', 'mensaje': str(e)}, status=400)
-
     return JsonResponse({'status': 'error', 'mensaje': 'Método no permitido'}, status=405)
 
 
@@ -69,12 +29,7 @@ def recibir_gps(request):
 def ultima_coordenada(request):
     try:
         coord = Coordenada.objects.latest('timestamp')
-        return JsonResponse({
-            'lat':       coord.latitud,
-            'lng':       coord.longitud,
-            'timestamp': str(coord.timestamp),
-            'gasolina':  coord.gasolina,
-        })
+        return JsonResponse({'lat': coord.latitud, 'lng': coord.longitud, 'timestamp': str(coord.timestamp)})
     except Coordenada.DoesNotExist:
         return JsonResponse({'error': 'Sin datos aún'}, status=404)
 
@@ -89,6 +44,16 @@ def historial_coordenadas(request):
 # ── Calcular ruta óptima con A* Manhattan ───────────────────────
 @csrf_exempt
 def calcular_ruta(request):
+    """
+    Body JSON esperado:
+    {
+        "origen": "NombrePunto",
+        "destino": "NombrePunto",
+        "puntos": [{"nombre": "...", "lat": .., "lng": ..}, ...],
+        "precio_gasolina": 24.5,      (opcional)
+        "rendimiento_kmL": 12.0       (opcional)
+    }
+    """
     if request.method == 'POST':
         try:
             data    = json.loads(request.body)
@@ -96,8 +61,8 @@ def calcular_ruta(request):
             destino = data.get('destino')
             puntos  = data.get('puntos', [])
 
-            precio_gasolina = data.get('precio_gasolina', 24.5)
-            rendimiento_kmL = data.get('rendimiento_kmL', 12.0)
+            precio_gasolina  = data.get('precio_gasolina', 24.5)
+            rendimiento_kmL  = data.get('rendimiento_kmL', 12.0)
 
             if not origen or not destino:
                 return JsonResponse({'error': 'Se requiere origen y destino'}, status=400)
@@ -106,6 +71,7 @@ def calcular_ruta(request):
             if origen not in coordenadas or destino not in coordenadas:
                 return JsonResponse({'error': 'Origen o destino no están en la lista de puntos'}, status=400)
 
+            # Cargar casetas y zonas de tráfico activas desde la BD
             casetas_qs = Caseta.objects.filter(activa=True)
             casetas = [
                 {'lat': c.latitud, 'lng': c.longitud, 'costo': c.costo}
@@ -132,6 +98,10 @@ def calcular_ruta(request):
 
             litros, costo_gasolina = calcular_combustible(dist_km, rendimiento_kmL, precio_gasolina)
 
+            # Casetas que aplican en esta ruta (informativo)
+            casetas_en_ruta = [c.nombre for c in casetas_qs]  # simplificado
+
+            # Guardar en BD
             ruta_obj = RutaPlaneada.objects.create(
                 nombre=f"A* Manhattan — {origen} → {destino}",
                 algoritmo='astar_manhattan',
@@ -141,16 +111,13 @@ def calcular_ruta(request):
             for idx, nombre_punto in enumerate(ruta):
                 if nombre_punto in coordenadas:
                     lat, lng = coordenadas[nombre_punto]
-                    PuntoRuta.objects.create(
-                        ruta=ruta_obj, nombre=nombre_punto,
-                        latitud=lat, longitud=lng, orden=idx
-                    )
+                    PuntoRuta.objects.create(ruta=ruta_obj, nombre=nombre_punto, latitud=lat, longitud=lng, orden=idx)
 
             return JsonResponse({
                 'ruta':            ruta,
                 'distancia_km':    dist_km,
                 'tiempo_min':      tiempo_min,
-                'polilinea':       polilinea,
+                'polilinea':       polilinea,   # [[lat,lng], ...] ya calculada en backend
                 'litros':          litros,
                 'costo_gasolina':  costo_gasolina,
                 'ruta_id':         ruta_obj.id,
@@ -160,7 +127,6 @@ def calcular_ruta(request):
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
-
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
@@ -170,20 +136,18 @@ def verificar_desvio(request, ruta_id):
         coord_actual = Coordenada.objects.latest('timestamp')
         ruta         = RutaPlaneada.objects.get(id=ruta_id)
         puntos       = list(ruta.puntos.values('latitud', 'longitud'))
-        es_critica   = detectar_ruta_critica(
-            (coord_actual.latitud, coord_actual.longitud), puntos
-        )
+        es_critica   = detectar_ruta_critica((coord_actual.latitud, coord_actual.longitud), puntos)
         return JsonResponse({
             'es_critica': es_critica,
             'lat_actual': coord_actual.latitud,
             'lng_actual': coord_actual.longitud,
-            'ruta_id':    ruta_id
+            'ruta_id': ruta_id
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
 
-# ── CASETAS ─────────────────────────────────────────────────────
+# ── CASETAS: crear y listar ─────────────────────────────────────
 @csrf_exempt
 def casetas(request):
     if request.method == 'GET':
@@ -202,10 +166,7 @@ def casetas(request):
                 longitud=data['lng'],
                 costo=data['costo']
             )
-            return JsonResponse({
-                'id': c.id, 'nombre': c.nombre,
-                'lat': c.latitud, 'lng': c.longitud, 'costo': c.costo
-            })
+            return JsonResponse({'id': c.id, 'nombre': c.nombre, 'lat': c.latitud, 'lng': c.longitud, 'costo': c.costo})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
@@ -223,17 +184,16 @@ def eliminar_caseta(request, caseta_id):
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
-# ── ZONAS DE TRÁFICO ────────────────────────────────────────────
+# ── ZONAS DE TRÁFICO: crear y listar ────────────────────────────
 @csrf_exempt
 def zonas_trafico(request):
     if request.method == 'GET':
         data = [
             {
-                'id': z.id, 'nombre': z.nombre,
-                'lat': z.latitud, 'lng': z.longitud,
+                'id': z.id, 'nombre': z.nombre, 'lat': z.latitud, 'lng': z.longitud,
                 'radio_km': z.radio_km, 'nivel': z.nivel,
                 'hora_inicio': str(z.hora_inicio) if z.hora_inicio else None,
-                'hora_fin':    str(z.hora_fin)    if z.hora_fin    else None,
+                'hora_fin': str(z.hora_fin) if z.hora_fin else None,
             }
             for z in ZonaTrafico.objects.filter(activa=True)
         ]
@@ -249,11 +209,10 @@ def zonas_trafico(request):
                 radio_km=data.get('radio_km', 0.5),
                 nivel=data.get('nivel', 'medio'),
                 hora_inicio=data.get('hora_inicio') or None,
-                hora_fin=data.get('hora_fin')    or None,
+                hora_fin=data.get('hora_fin') or None,
             )
             return JsonResponse({
-                'id': z.id, 'nombre': z.nombre,
-                'lat': z.latitud, 'lng': z.longitud,
+                'id': z.id, 'nombre': z.nombre, 'lat': z.latitud, 'lng': z.longitud,
                 'radio_km': z.radio_km, 'nivel': z.nivel
             })
         except Exception as e:

@@ -6,51 +6,6 @@
     <title>GPS Tracker — A* Manhattan</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-
-            /* ── Alerta de gasolina ── */
-    #alerta-gasolina {
-        display: none;
-        position: fixed;
-        top: 120px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #e17055;
-        color: white;
-        padding: 14px 28px;
-        border-radius: 10px;
-        font-weight: bold;
-        font-size: 0.95rem;
-        z-index: 2000;
-        border: 2px solid #d63031;
-        box-shadow: 0 4px 20px rgba(214,48,49,0.5);
-        max-width: 400px;
-        text-align: center;
-        animation: pulso 0.8s infinite;
-    }
-
-    /* ── Indicador de nivel de gasolina en el panel ── */
-    .gasolina-barra-contenedor {
-        background: #0f3460;
-        border-radius: 8px;
-        padding: 10px 12px;
-        font-size: 0.82rem;
-    }
-    .gasolina-barra-fondo {
-        background: #1a1a2e;
-        border-radius: 4px;
-        height: 14px;
-        margin-top: 6px;
-        overflow: hidden;
-    }
-    .gasolina-barra-fill {
-        height: 100%;
-        border-radius: 4px;
-        transition: width 0.5s ease, background 0.5s ease;
-        width: 0%;
-        background: #00b894;
-    }
-
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; height: 100vh; display: flex; flex-direction: column; }
         header { background: #16213e; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0f3460; z-index: 1000; }
@@ -129,18 +84,6 @@
                 Última act: <span id="tiempo-actual">—</span>
             </div>
         </div>
-
-                <!-- Nivel de gasolina -->
-        <div>
-            <h2>⛽ Nivel de gasolina</h2>
-            <div class="gasolina-barra-contenedor">
-                <span id="gasolina-texto">— %</span>
-                <div class="gasolina-barra-fondo">
-                    <div class="gasolina-barra-fill" id="gasolina-barra"></div>
-                </div>
-            </div>
-        </div>
-        <div id="alerta-gasolina">⛽ —</div>
 
         <!-- Selector de modo -->
         <div>
@@ -469,78 +412,19 @@ async function actualizarGPS() {
         const res  = await fetch('/api/gps/ultima/');
         const data = await res.json();
         if (data.error) return;
-
         const pos = [data.lat, data.lng];
-
         if (!marcadorGPS) {
-            marcadorGPS = L.marker(pos, { icon: iconoGPS() })
-                .addTo(mapa)
-                .bindPopup('📍 Posición GPS en tiempo real');
-        } else {
-            marcadorGPS.setLatLng(pos);
-        }
-
+            marcadorGPS = L.marker(pos, { icon: iconoGPS() }).addTo(mapa).bindPopup('📍 Posición GPS en tiempo real');
+        } else { marcadorGPS.setLatLng(pos); }
         document.getElementById('lat-actual').textContent  = data.lat.toFixed(6);
         document.getElementById('lng-actual').textContent  = data.lng.toFixed(6);
-        document.getElementById('tiempo-actual').textContent =
-            new Date(data.timestamp).toLocaleTimeString('es-MX');
-
+        document.getElementById('tiempo-actual').textContent = new Date(data.timestamp).toLocaleTimeString('es-MX');
         document.getElementById('indicador').className      = 'activo';
         document.getElementById('estado-texto').textContent = 'GPS activo';
-
         coordenadasRecorrido.push(pos);
         polylineRecorrido.setLatLngs(coordenadasRecorrido);
-
-        // ── Actualizar barra de gasolina ────────────────────
-        if (data.gasolina !== null && data.gasolina !== undefined) {
-            const nivel   = parseFloat(data.gasolina);
-            const barra   = document.getElementById('gasolina-barra');
-            const texto   = document.getElementById('gasolina-texto');
-            const alerta  = document.getElementById('alerta-gasolina');
-
-            texto.textContent = nivel.toFixed(1) + '%';
-            barra.style.width = nivel + '%';
-
-            // Color de la barra según nivel
-            if (nivel <= 10) {
-                barra.style.background = '#d63031';  // rojo crítico
-            } else if (nivel <= 25) {
-                barra.style.background = '#e17055';  // naranja bajo
-            } else if (nivel <= 50) {
-                barra.style.background = '#fdcb6e';  // amarillo medio
-            } else {
-                barra.style.background = '#00b894';  // verde normal
-            }
-
-            // Detectar caída brusca comparando con lectura anterior
-            if (window.gasolinaAnterior !== undefined) {
-                const caida = window.gasolinaAnterior - nivel;
-
-                if (caida >= 15) {
-                    // Caída brusca — mostrar alerta
-                    alerta.innerHTML = `⛽ ¡Caída brusca de gasolina!<br>
-                        ${window.gasolinaAnterior.toFixed(1)}% → ${nivel.toFixed(1)}%
-                        (−${caida.toFixed(1)}%)`;
-                    alerta.style.display = 'block';
-                    setTimeout(() => { alerta.style.display = 'none'; }, 8000);
-
-                } else if (nivel <= 10) {
-                    // Nivel crítico
-                    alerta.innerHTML = `🚨 Nivel crítico de gasolina: ${nivel.toFixed(1)}%`;
-                    alerta.style.display = 'block';
-                } else {
-                    alerta.style.display = 'none';
-                }
-            }
-
-            window.gasolinaAnterior = nivel;
-        }
-
         if (rutaActualId) verificarDesvio(rutaActualId);
-
-    } catch (e) {
-        console.error('Error GPS:', e);
-    }
+    } catch (e) { console.error('Error GPS:', e); }
 }
 
 // ── Agregar punto ───────────────────────────────────────────

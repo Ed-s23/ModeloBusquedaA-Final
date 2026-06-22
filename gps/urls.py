@@ -2,22 +2,22 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Mapa principal
-    path('',                          views.mapa,                  name='mapa'),
+    path('',                              views.mapa,                  name='mapa'),
 
-    # ESP32
-    path('api/gps/',                  views.recibir_gps,           name='recibir_gps'),
-    path('api/gps/ultima/',           views.ultima_coordenada,     name='ultima_coord'),
-    path('api/gps/historial/',        views.historial_coordenadas, name='historial'),
+    # GPS
+    path('api/gps/',                      views.recibir_gps,           name='recibir_gps'),
+    path('api/gps/ultima/',               views.ultima_coordenada,     name='ultima_coordenada'),
+    path('api/gps/historial/',            views.historial_coordenadas, name='historial_coordenadas'),
 
-    # Algoritmos
-    path('api/ruta/',                 views.calcular_ruta,         name='calcular_ruta'),
-    path('api/ruta/<int:ruta_id>/desvio/', views.verificar_desvio, name='verificar_desvio'),
+    # Ruta A* Manhattan
+    path('api/ruta/calcular/',            views.calcular_ruta,         name='calcular_ruta'),
+    path('api/ruta/desvio/<int:ruta_id>/',views.verificar_desvio,      name='verificar_desvio'),
 
-    # Vehículo
-    path('api/vehiculo/',             views.estado_vehiculo,       name='estado_vehiculo'),
+    # Casetas
+    path('api/casetas/',                  views.casetas,               name='casetas'),
+    path('api/casetas/<int:caseta_id>/',  views.eliminar_caseta,       name='eliminar_caseta'),
 
-    # Capas del mapa
-    path('api/casetas/',              views.listar_casetas,        name='casetas'),
-    path('api/trafico/',              views.listar_zonas_trafico,  name='trafico'),
+    # Zonas de tráfico
+    path('api/zonas/',                    views.zonas_trafico,         name='zonas_trafico'),
+    path('api/zonas/<int:zona_id>/',      views.eliminar_zona,         name='eliminar_zona'),
 ]
